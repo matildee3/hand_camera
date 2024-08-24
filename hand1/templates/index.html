@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        #videoFeed {
+            width: 15cm;
+            border: 1px solid black;
+            position: absolute;
+            left: 50%; 
+            top: 50%;
+            transform: translate(-50%, -50%); 
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center;">
+
+        <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+    </div>
+
+    <script>
+        // Function to fetch hand position from the Flask server
+        async function fetchHandPosition() {
+            const response = await fetch('/hand_position');
+            const position = await response.json();
+            return position;
+        }
+
+        // Function to update the position of the video feed window
+        function updateVideoFeedPosition(position) {
+            const videoFeed = document.getElementById('videoFeed');
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            // Calculate new positions based on hand movement
+            const newX = position.x * screenWidth;
+            const newY = position.y * screenHeight;
+
+            // Set the position of the video feed
+            videoFeed.style.left = `${newX}px`;
+            videoFeed.style.top = `${newY}px`;
+        }
+
+        // Continuously fetch and update the video feed position
+        async function trackHandPosition() {
+            while (true) {
+                const position = await fetchHandPosition();
+                updateVideoFeedPosition(position);
+                await new Promise(resolve => setTimeout(resolve, 100)); // 10 updates per second
+            }
+        }
+
+        // Start tracking hand position when the page loads
+        window.onload = trackHandPosition;
+    </script>
+</body>
+</html>

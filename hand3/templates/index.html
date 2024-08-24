@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Landmark Detection</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #canvas {
+            position: absolute;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            pointer-events: none;
+        }
+
+        #canvas img {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas">
+        <img src="{{ url_for('video_feed') }}" alt="Video Feed in Canvas">
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const canvasImage = canvas.querySelector('img');
+    
+        // Function to fetch hand position from the Flask server
+        async function fetchHandPosition() {
+            const response = await fetch('/hand_position');
+            const position = await response.json();
+            return position;
+        }
+    
+        // Function to update the canvas size and position based on hand movements
+        function updateCanvas(position) {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+    
+            // Calculate the canvas center position based on hand movement
+            const handCenterX = position.x * screenWidth;
+            const handCenterY = position.y * screenHeight;
+    
+            // Set the canvas size based on hand openness
+            const minWidth = 0;  // Closed hand size (in cm)
+            const minHeight = 0;
+            const maxWidth = 15 * 37.8;  // 20cm converted to pixels (1cm ≈ 37.8px)
+            const maxHeight = 15 * 37.8;  // 10cm converted to pixels
+    
+            // Use a smooth mapping for the size based on openness, ensuring gradual increase
+            const opennessFactor = Math.pow(position.openness, 2);  // Exponential mapping for smooth growth
+            const width = minWidth + (maxWidth - minWidth) * opennessFactor;
+            const height = minHeight + (maxHeight - minHeight) * opennessFactor;
+    
+            // Control visibility based on the openness
+            if (position.openness < 0.3) {  // When almost closed, make the canvas nearly invisible
+                canvas.style.opacity = '0';
+            } else {
+                canvas.style.opacity = '1';
+    
+                // Set the size and position of the canvas
+                canvas.style.width = `${width}px`;
+                canvas.style.height = `${height}px`;
+    
+                // Apply a vertical offset to center the hand better (tweak the offset value as needed)
+                const offsetY = -0.4 * height;  
+                const offsetX = -0.2 * width;
+                const canvasX = handCenterX - canvas.offsetWidth / 2 + offsetX;
+                const canvasY = handCenterY - canvas.offsetHeight / 2 + offsetY;
+    
+                canvas.style.left = `${canvasX}px`;
+                canvas.style.top = `${canvasY}px`;
+    
+                // Adjust the position of the video within the canvas to keep it fixed
+                canvasImage.style.left = `-${canvasX}px`;
+                canvasImage.style.top = `-${canvasY}px`;
+            }
+        }
+    
+        // Continuously fetch and update the canvas size and position
+        async function trackHandPosition() {
+            while (true) {
+                const position = await fetchHandPosition();
+                updateCanvas(position);
+                await new Promise(resolve => setTimeout(resolve, 100)); // 10 updates per second
+            }
+        }
+    
+        window.onload = trackHandPosition;
+    </script>
+    
+    
+</body>
+</html>

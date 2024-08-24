@@ -1,5 +1,10 @@
 # hand_camera
 
+```
+git clone https://github.com/matildee3/hand_camera.git
+cd hand_camera
+```
+
 ## hand1 
 
 

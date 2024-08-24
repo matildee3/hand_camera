@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Landmark Detection</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #videoFeed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -1;
+            pointer-events: none;
+        }
+        #canvas {
+            width: 10cm;
+            height: 10cm;
+            border: 2px solid black;
+            position: absolute;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+        }
+        #canvas img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+
+    <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+
+    <div id="canvas">
+        <img src="{{ url_for('video_feed') }}" alt="Video Feed in Canvas">
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const canvasImage = canvas.querySelector('img');
+
+        // Function to fetch hand position from the Flask server
+        async function fetchHandPosition() {
+            const response = await fetch('/hand_position');
+            const position = await response.json();
+            return position;
+        }
+
+        // Function to update the canvas position based on hand movements
+        function updateCanvasPosition(position) {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            // Calculate new positions based on hand movement
+            const canvasX = position.x * screenWidth;
+            const canvasY = position.y * screenHeight;
+
+            // Update the canvas position on the screen
+            canvas.style.left = `${canvasX - canvas.offsetWidth / 2}px`;
+            canvas.style.top = `${canvasY - canvas.offsetHeight / 2}px`;
+
+            // Adjust the position of the video within the canvas to keep it fixed
+            canvasImage.style.left = `-${canvasX}px`;
+            canvasImage.style.top = `-${canvasY}px`;
+        }
+
+        // Continuously fetch and update the canvas position
+        async function trackHandPosition() {
+            while (true) {
+                const position = await fetchHandPosition();
+                updateCanvasPosition(position);
+                await new Promise(resolve => setTimeout(resolve, 100)); // 10 updates per second
+            }
+        }
+
+        window.onload = trackHandPosition;
+    </script>
+</body>
+</html>

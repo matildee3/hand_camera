@@ -2,6 +2,7 @@
 
 ```
 git clone https://github.com/matildee3/hand_camera.git
+pip install Flask opencv-python mediapipe numpy
 cd hand_camera
 ```
 
@@ -44,3 +45,14 @@ python app.py
 ```
 
 ![hand3](hand3/output3.gif)
+
+
+## hand4
+
+
+```
+cd hand4
+python app.py
+```
+
+![hand4](hand4/output5.gif)

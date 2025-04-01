@@ -6,6 +6,14 @@ pip install Flask opencv-python mediapipe numpy
 cd hand_camera
 ```
 
+## hand-synth
+
+```
+cd synth
+python synth.py
+```
+![hand-synth](synth/synth.gif)
+
 ## hand1 
 
 

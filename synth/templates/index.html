@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Landmark Detection</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #spectrogram {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background-color: black;
+        }
+
+        #canvas {
+            width: 12cm;
+            height: 12cm;
+            border: 2px solid black;
+            position: absolute;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            pointer-events: none;
+            transition: transform 0.1s ease;
+        }
+
+        #canvas img {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="spectrogram"></canvas>
+    <div id="canvas">
+        <img src="{{ url_for('video_feed') }}" alt="Video Feed in Canvas">
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const canvasImage = canvas.querySelector('img');
+
+        // Base dimensions
+        const baseWidth = 12;
+        const baseHeight = 12;
+
+        async function fetchHandPosition() {
+            const response = await fetch('/hand_position');
+            const position = await response.json();
+            return position;
+        }
+
+        function updateCanvasPosition(position) {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            const handCenterX = position.x * screenWidth;
+            const handCenterY = position.y * screenHeight;
+
+            const canvasX = handCenterX - canvas.offsetWidth / 2;
+            const canvasY = handCenterY - canvas.offsetHeight / 2;
+
+            canvas.style.left = `${canvasX}px`;
+            canvas.style.top = `${canvasY}px`;
+
+            canvasImage.style.left = `-${canvasX}px`;
+            canvasImage.style.top = `-${canvasY}px`;
+
+            const scaleFactor = position.scale;
+            canvas.style.transform = `scale(${scaleFactor})`;
+
+            canvas.style.width = `${baseWidth * scaleFactor}cm`;
+            canvas.style.height = `${baseHeight * scaleFactor}cm`;
+        }
+
+        async function trackHandPosition() {
+            while (true) {
+                const position = await fetchHandPosition();
+                updateCanvasPosition(position);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+
+
+        async function startSpectrogram() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 1024;
+
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+
+                const canvas = document.getElementById('spectrogram');
+                const canvasCtx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                let imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+                function draw() {
+                    requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    imageData = canvasCtx.getImageData(1, 0, canvas.width - 1, canvas.height);
+                    canvasCtx.putImageData(imageData, 0, 0);
+
+                    for (let i = 0; i < bufferLength; i++) {
+                        const value = dataArray[i];
+                        const percent = value / 255;
+                        const height = Math.round(percent * canvas.height);
+                        const offset = canvas.height - height;
+                        const hue = (percent * 360).toFixed(0);
+                      
+                        canvasCtx.fillStyle = `rgb(0, ${value * 0.7}, 0)`;  // Darker green variant
+                        canvasCtx.fillRect(canvas.width - 1, offset, 1, height);
+                    }
+                }
+
+                draw();
+            } catch (error) {
+                console.error("Microphone access error:", error);
+            }
+        }
+
+
+        window.onload = () => {
+            trackHandPosition();
+            startSpectrogram();
+        };
+    </script>
+</body>
+
+</html>
